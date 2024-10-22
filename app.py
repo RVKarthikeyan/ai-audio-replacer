@@ -26,17 +26,27 @@ bucket = gcs_client.get_bucket(gcs_bucket_name)
 def upload_to_gcs(blob_name, file_path):
     blob = bucket.blob(blob_name)
     blob.upload_from_filename(file_path, timeout=600)
-    st.success(f"Uploaded {file_path} to GCS as {blob_name}")
 
 # Streamlit app UI
-st.title("Video Processing App")
+st.set_page_config(page_title="AI Audio Replacer", layout="wide")
+
+# Title and description
+st.title("🎥 AI Audio Replacer App")
+st.markdown("""
+This application allows you to upload a video file, process it, and download the final result with AI-generated audio. 
+### How it Works:
+1. Upload a video file (MP4 format).
+2. The application will process the video to replace the audio with AI-generated voice.
+3. Download the processed video once completed.
+""")
 
 # Initialize session state
 if 'processed' not in st.session_state:
     st.session_state.processed = False
     st.session_state.folder_name = None
 
-uploaded_file = st.file_uploader("Upload a video", type=["mp4"])
+# File uploader
+uploaded_file = st.file_uploader("Upload a video", type=["mp4"], label_visibility="collapsed")
 
 if uploaded_file is not None and not st.session_state.processed:
     # Create a unique folder for this client
@@ -50,40 +60,49 @@ if uploaded_file is not None and not st.session_state.processed:
     
     # Upload video to GCS
     upload_to_gcs(f"{st.session_state.folder_name}/uploaded_video.mp4", local_video_path)
-    
-    # Process the uploaded video
-    try:
-        # Run the speech-to-text script
-        subprocess.run(["python", "speechtotext.py", st.session_state.folder_name], check=True)
 
-        # Run the new transcript correction script
-        subprocess.run(["python", "newtranscript.py", st.session_state.folder_name], check=True)
+    # Show progress
+    with st.spinner("Processing..."):
+        try:
+            # Indicate upload completion
+            st.success("Uploaded the video.")
 
-        # Run the text-to-speech script
-        subprocess.run(["python", "texttospeech.py", st.session_state.folder_name], check=True)
+            # Run the speech-to-text script
+            subprocess.run(["python", "speechtotext.py", st.session_state.folder_name], check=True)
+            st.success("Transcribing the video.")
 
-        # Add the new audio to the video
-        subprocess.run(["python", "audioreplacer.py", st.session_state.folder_name], check=True)
+            # Run the new transcript correction script
+            subprocess.run(["python", "newtranscript.py", st.session_state.folder_name], check=True)
+            st.success("Correcting the transcript.")
 
-        st.success("Video processing completed successfully!")
+            # Run the text-to-speech script
+            subprocess.run(["python", "texttospeech.py", st.session_state.folder_name], check=True)
+            st.success("Generating new audio.")
 
-        # Prepare the final video for download
-        final_video_path = os.path.join(st.session_state.folder_name, "final_video.mp4")
-        with open(final_video_path, "rb") as final_video_file:
-            st.download_button(
-                label="Download Processed Video",
-                data=final_video_file,
-                file_name="processed_video.mp4",
-                mime="video/mp4"
-            )
-        
-        # Mark the processing as done
-        st.session_state.processed = True
+            # Add the new audio to the video
+            subprocess.run(["python", "audioreplacer.py", st.session_state.folder_name], check=True)
+            st.success("Finalizing the video.")
 
-    except subprocess.CalledProcessError as e:
-        st.error(f"An error occurred during processing: {e}")
+            st.success("Video processing completed!")
+
+            # Prepare the final video for download
+            final_video_path = os.path.join(st.session_state.folder_name, "final_video.mp4")
+            with open(final_video_path, "rb") as final_video_file:
+                st.download_button(
+                    label="Download Processed Video",
+                    data=final_video_file,
+                    file_name="processed_video.mp4",
+                    mime="video/mp4"
+                )
+            
+            # Mark the processing as done
+            st.session_state.processed = True
+
+        except subprocess.CalledProcessError as e:
+            st.error("An error occurred during processing.")
 
 # Add an option to reset the app
 if st.session_state.processed:
+    st.markdown("---")  # Horizontal line
     if st.button("Upload New Video"):
         st.session_state.processed = False

@@ -1,15 +1,15 @@
 import sys
 from google.oauth2 import service_account
 from google.cloud import storage, speech
-import subprocess
 import os
 from dotenv import load_dotenv
+from moviepy.editor import VideoFileClip
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Set up Google Cloud credentials
-CREDENTIALS_FILE = 'key.json' # Path to your service account key file
+CREDENTIALS_FILE = 'key.json'  # Path to your service account key file
 credentials = service_account.Credentials.from_service_account_file(CREDENTIALS_FILE)
 
 # Constants
@@ -18,11 +18,12 @@ VIDEO_LOCAL_PATH = os.path.join(sys.argv[1], "uploaded_video.mp4")
 AUDIO_LOCAL_PATH = os.path.join(sys.argv[1], "extracted_audio.mp3")
 TRANSCRIPT_OUTPUT_FILE = os.path.join(sys.argv[1], "transcript.txt")
 
-# Function to extract audio from video and save as MP3
+# Function to extract audio from video and save as MP3 using moviepy
 def extract_audio_from_video(video_path, audio_output_path):
-    ffmpeg_path = r"C:\ffmpeg\ffmpeg-2024-10-17-git-e1d1ba4cbc-full_build\bin\ffmpeg.exe"  # Full path to ffmpeg.exe
-    command = f"{ffmpeg_path} -i {video_path} -q:a 0 -map a {audio_output_path}"  # Use MP3 for audio output
-    subprocess.call(command, shell=True)
+    video = VideoFileClip(video_path)
+    audio = video.audio
+    audio.write_audiofile(audio_output_path, codec='mp3')  # Save as MP3
+    video.close()  # Close video file
     print(f"Extracted audio to {audio_output_path}")
 
 # Function to transcribe audio using Google Speech-to-Text

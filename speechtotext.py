@@ -1,6 +1,7 @@
 import sys
-from google.oauth2 import service_account
+
 from google.cloud import storage, speech
+from google.oauth2 import service_account
 import os
 from dotenv import load_dotenv
 from moviepy.editor import VideoFileClip
